@@ -1,0 +1,12 @@
+{
+  "name": "streamlit-keepalive",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Keeps Streamlit Community Cloud apps awake and auto-wakes them when they sleep.",
+  "scripts": {
+    "keepalive": "node keepalive.js"
+  },
+  "dependencies": {
+    "playwright": "^1.49.0"
+  }
+}

@@ -1,0 +1,51 @@
+name: Streamlit keep-alive
+
+on:
+  schedule:
+    # Every 6 hours. Streamlit sleeps after ~7 days of no traffic, so this is
+    # generous headroom; the tight interval mainly shortens the window in which
+    # a visitor could hit a sleep screen after an unexpected reboot.
+    - cron: "0 */6 * * *"
+  workflow_dispatch:
+
+# Needed only by the heartbeat step below.
+permissions:
+  contents: write
+
+concurrency:
+  group: keepalive
+  cancel-in-progress: false
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: Visit apps (wake if asleep)
+        run: node keepalive.js
+
+      # GitHub disables scheduled workflows in repos with no commit activity
+      # for 60 days. This heartbeat keeps the schedule alive indefinitely.
+      - name: Heartbeat commit
+        if: github.event_name == 'schedule'
+        run: |
+          date -u +"%Y-%m-%dT%H:%M:%SZ" > .last-run
+          if [[ -n "$(git status --porcelain .last-run)" ]]; then
+            git config user.name  "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add .last-run
+            git commit -m "chore: keep-alive heartbeat [skip ci]"
+            git push
+          fi
